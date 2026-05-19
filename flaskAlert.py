@@ -1,4 +1,5 @@
 import telegram
+import asyncio
 import logging
 import json
 import os
@@ -49,13 +50,18 @@ def postAlertmanager():
                     message += "\n%s\n" % alert['annotations']['message']
 
 
-            bot.sendMessage(chat_id=chatID, text=message)
-            return "Alert OK", 200
+            asyncio.run(bot.send_message(chat_id=chatID, text=message))
+        return "Alert OK", 200
     except KeyError as error:
-        bot.sendMessage(chat_id=chatID, text="Error! " + str(error)   )
+        asyncio.run(bot.send_message(chat_id=chatID, text="Error! " + str(error)))
         return "Alert nOK", 200
     except:
-        bot.sendMessage(chat_id=chatID, text="Error! with content: " + str(sys.exc_info()[0]) )
+        asyncio.run(
+            bot.send_message(
+                chat_id=chatID,
+                text="Error! with content: " + str(sys.exc_info()[0]),
+            )
+        )
         return "Alert nOK", 200
 
 
