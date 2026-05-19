@@ -1,20 +1,21 @@
-FROM alpine:3.7
+FROM python:3.11-slim
 
-LABEL maintainer "Carlos Augusto Malucelli <malucellicarlos@gmail.com>"
+ENV PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
 
-RUN apk update \
-		&& apk add py-pip bash gcc python-dev musl-dev libffi-dev openssl-dev \
-		&& rm -rf /var/cache/apk/* \
-		&& wget https://github.com/nopp/alertmanager-webhook-telegram/archive/master.zip \
-		&& unzip master.zip \
-		&& pip install -r alertmanager-webhook-telegram-master/requirements.txt
+WORKDIR /app
 
-WORKDIR /alertmanager-webhook-telegram
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt \
+    && mkdir -p /app \
+    && chgrp -R 0 /app \
+    && chmod -R g=u /app
 
-COPY run.sh /alertmanager-webhook-telegram
-
-RUN chmod +x /alertmanager-webhook-telegram/run.sh
+COPY flaskAlert.py /app/flaskAlert.py
+COPY docker/run.sh /app/run.sh
+RUN chmod +x /app/run.sh
 
 EXPOSE 9119
 
-ENTRYPOINT ["./run.sh"]
+ENTRYPOINT ["/app/run.sh"]

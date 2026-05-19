@@ -1,34 +1,30 @@
-#!/bin/bash
+#!/bin/sh
+set -e
 
-if [ "x" == "x$username" ]; then
-  echo "warning: username is not set"
+if [ -z "${BASIC_AUTH_USERNAME:-}" ]; then
+  echo "warning: BASIC_AUTH_USERNAME is not set"
 else
-  echo "admin user is $username"
+  echo "BASIC_AUTH_USERNAME is set"
 fi
 
-if [ "x" == "x$password" ]; then
-  echo "warning: password is not set"
+if [ -z "${BASIC_AUTH_PASSWORD:-}" ]; then
+  echo "warning: BASIC_AUTH_PASSWORD is not set"
 else
-  echo "password is set (not visible)"
+  echo "BASIC_AUTH_PASSWORD is set"
 fi
 
-if [ "x" == "x$bottoken" ]; then
-  echo "FAIL: bottoken is not set"
+if [ -z "${TELEGRAM_BOTTOKEN:-}" ]; then
+  echo "FAIL: TELEGRAM_BOTTOKEN is not set"
   exit 1
 else
-  echo "bottoken is set (not visible)"
+  echo "TELEGRAM_BOTTOKEN is set"
 fi
 
-if [ "x" == "x$chatid" ]; then
-  echo "FAIL: chatid is not set"
+if [ -z "${TELEGRAM_CHATID:-}" ]; then
+  echo "FAIL: TELEGRAM_CHATID is not set"
   exit 2
 else
-  echo "chatid is $chatid"
+  echo "TELEGRAM_CHATID is set"
 fi
 
-sed -i s/botToken/"$bottoken"/ flaskAlert.py
-sed -i s/xchatIDx/"$chatid"/ flaskAlert.py
-sed -i s/XXXUSERNAME/"$username"/ flaskAlert.py
-sed -i s/XXXPASSWORD/"$password"/ flaskAlert.py
-
-/usr/bin/gunicorn -w 4 -b 0.0.0.0:9119 flaskAlert:app
+exec gunicorn -w 4 -b 0.0.0.0:9119 flaskAlert:app
