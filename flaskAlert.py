@@ -3,68 +3,85 @@ import asyncio
 import logging
 import json
 import os
-import sys
 import pprint
-from flask import Flask
-from flask import request
+import traceback
+from flask import Flask, request
 from flask_basicauth import BasicAuth
 
 app = Flask(__name__)
+
 app.secret_key = 'aYT>.L$kk2h>!'
+
 app.config['BASIC_AUTH_USERNAME'] = os.environ['BASIC_AUTH_USERNAME']
 app.config['BASIC_AUTH_PASSWORD'] = os.environ['BASIC_AUTH_PASSWORD']
+app.config['BASIC_AUTH_FORCE'] = True
 
 basic_auth = BasicAuth(app)
-app.config['BASIC_AUTH_FORCE'] = True
-bot = telegram.Bot(token= os.environ['TELEGRAM_BOTTOKEN']  )
+
+bot = telegram.Bot(token=os.environ['TELEGRAM_BOTTOKEN'])
 chatID = os.environ['TELEGRAM_CHATID']
 
-@app.route('/alert', methods = ['POST'])
+
+@app.route('/alert', methods=['POST'])
 def postAlertmanager():
 
-    content = json.loads(request.get_data())
+    content = request.get_json()
+
     pprint.pprint(content)
-    with open("Output.txt", "w") as text_file:
-        text_file.write("{0}".format(content))
+
+    try:
+        with open("/tmp/Output.txt", "w") as text_file:
+            text_file.write(str(content))
+    except Exception as e:
+        print(f"File write error: {e}")
+
     try:
         for alert in content['alerts']:
             message = "Status: %s\n" % alert['status']
-            message += """Alertname: """+alert['labels']['alertname']+""" \n"""
-
+            message += "Alertname: %s\n" % (alert.get('labels', {}).get('alertname', 'N/A'))
             if alert['status'] == "firing":
-                message += """Detected: """+alert['startsAt']+""" \n"""
-
+                message += "Detected: %s\n" % alert.get('startsAt')
             if alert['status'] == "resolved":
-                message += """Resolved: """+alert['endsAt']+""" \n"""
-
-            if  "labels" in alert:
-                message += """Labels:\n"""
+                message += "Resolved: %s\n" % alert.get('endsAt')
+            if "labels" in alert:
+                message += "Labels:\n"
                 for label in alert['labels']:
-                    message += "\t %s :  %s\n" % (label,alert['labels'][label])
-            
-            if "generatorURL" in alert:
-                message += "%s\n" %  alert['generatorURL']
+                    message += "\t%s : %s\n" % (
+                        label,
+                        alert['labels'][label])
 
-            if "annotations" in alert:
-                if "message" in alert['annotations']:
-                    message += "\n%s\n" % alert['annotations']['message']
+            if "generatorURL" in alert: message += "%s\n" % alert['generatorURL']
 
+            annotations = alert.get("annotations", {})
 
-            asyncio.run(bot.send_message(chat_id=chatID, text=message))
+            summary = (
+                annotations.get("message")
+                or annotations.get("summary")
+                or annotations.get("description")
+                or "No details")
+
+            message += "\n%s\n" % summary
+
+            print(message)
+
+            asyncio.run(
+                bot.send_message(
+                    chat_id=chatID,
+                    text=message))
+
         return "Alert OK", 200
-    except KeyError as error:
-        asyncio.run(bot.send_message(chat_id=chatID, text="Error! " + str(error)))
-        return "Alert nOK", 200
-    except:
-        asyncio.run(
-            bot.send_message(
-                chat_id=chatID,
-                text="Error! with content: " + str(sys.exc_info()[0]),
-            )
-        )
-        return "Alert nOK", 200
+
+    except Exception as e:
+
+        print("ERROR!")
+        print(str(e))
+
+        traceback.print_exc()
+
+        return str(e), 500
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='flaskAlert.log', level=logging.INFO)
+    logging.basicConfig(level=logging.INFO)
+
     app.run(host='0.0.0.0', port=9119)
